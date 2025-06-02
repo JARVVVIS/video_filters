@@ -10,7 +10,7 @@ def download_video(video_url, filename, root):
     # Specify a more compatible format - exclude AV1 codec
     # Preferring h264 codec which is widely supported
     ydl_opts = {
-        "format": "bestvideo[height<=224][ext=mp4][vcodec!*=av01][vcodec!*=av1]+bestaudio[ext=m4a]/best[height<=224][ext=mp4][vcodec!*=av01][vcodec!*=av1]/best[ext=mp4][vcodec!*=av01][vcodec!*=av1]/best",
+        "format": "bestvideo[ext=mp4][vcodec!*=av01][vcodec!*=av1]+bestaudio[ext=m4a]/best[ext=mp4][vcodec!*=av01][vcodec!*=av1]/best",
         "outtmpl": output_path,
         "merge_output_format": "mp4",
         # Add postprocessors to ensure compatible format

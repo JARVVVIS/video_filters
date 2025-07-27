@@ -1,0 +1,1 @@
+from video_filters.laion_watermark.laion_watermark import load_artifacts, infer

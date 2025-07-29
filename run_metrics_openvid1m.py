@@ -31,12 +31,8 @@ def main():
     parser.add_argument(
         "--shot_categorizer_repo_id", type=str, default="diffusers/shot-categorizer-v0"
     )
-    parser.add_argument(
-        "--start_idx", type=int, default=None
-    )
-    parser.add_argument(
-        "--end_idx", type=int, default=None
-    )
+    parser.add_argument("--start_idx", type=int, default=None)
+    parser.add_argument("--end_idx", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -76,8 +72,6 @@ def main():
     print('*'*100)
 
     # Process each filter (outer loop)
-    already_available = ["laion_aesthetics", "motion_score"]
-    args.filters = [f for f in args.filters if f not in already_available]
     for filter_name in args.filters:
         print(f"Processing filter: {filter_name}")
 

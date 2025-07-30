@@ -9,7 +9,7 @@ from configs import ROOT_DIR, FILTER_MODULES, get_filter_module
 
 def get_openvid_paths(root_dir):
     if isinstance(root_dir, str):
-        root_dir = Path(str)
+        root_dir = Path(root_dir)
     video_paths = list(root_dir.glob("*.mp4"))
     return sorted(video_paths)
 
@@ -44,7 +44,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     # Get video paths for the dataset
-    video_paths = get_openvid_paths(args.root_dir)
+    video_paths = get_openvid_paths(args.dataset)
 
     # Convert video_dict to list for indexing
     total_videos = len(video_paths)

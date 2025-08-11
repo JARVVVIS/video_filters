@@ -22,6 +22,9 @@ import warnings
 import logging
 from datetime import datetime
 
+import random
+random.seed(2025)
+
 warnings.filterwarnings("ignore")
 
 from video_filters.frame_utils import return_frames
@@ -632,6 +635,8 @@ def main():
 
     # Get video paths for the dataset
     video_items = get_openvid_paths(args.dataset)
+    if args.start_idx is None and args.end_idx is None:
+        random.shuffle(video_items)
     total_videos = len(video_items)
 
     # Handle start_idx and end_idx
@@ -683,9 +688,7 @@ def main():
         logger.info(f"{'=' * 80}")
 
         # Define output paths
-        base_output_path = os.path.join(
-            args.output_dir, f"{filter_name}_results_{args.dataset}"
-        )
+        base_output_path = os.path.join(args.output_dir, f"{filter_name}_results")
         range_suffix = f"_{args.start_idx}_{args.end_idx}"
         output_path = base_output_path + range_suffix
         checkpoint_csv = f"{output_path}_checkpoint.csv"

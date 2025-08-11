@@ -635,7 +635,8 @@ def main():
 
     # Get video paths for the dataset
     video_items = get_openvid_paths(args.dataset)
-    random.shuffle(video_items)
+    if args.start_idx is None and args.end_idx is None:
+        random.shuffle(video_items)
     total_videos = len(video_items)
 
     # Handle start_idx and end_idx

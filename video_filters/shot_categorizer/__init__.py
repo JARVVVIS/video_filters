@@ -1,1 +1,5 @@
-from video_filters.shot_categorizer.shot_categorizer import load_artifacts, infer
+from video_filters.shot_categorizer.shot_categorizer import (
+    load_artifacts,
+    infer,
+    infer_batch,
+)

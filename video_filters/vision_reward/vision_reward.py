@@ -73,7 +73,7 @@ def load_video(source, strategy: str = "chat", num_frames: int = 24):
         return frames.permute(3, 0, 1, 2)  # (C, T, H, W)
 
     # -----------------------------------------------------------------------
-    # 2) If `source` is a str / Path, decide whether it’s a *video file*
+    # 2) If source is a str / Path, decide whether it’s a *video file*
     #    or a *frame directory*.
     # -----------------------------------------------------------------------
     if isinstance(source, (str, Path)):
@@ -115,7 +115,7 @@ def load_video(source, strategy: str = "chat", num_frames: int = 24):
 
     # -----------------------------------------------------------------------
     raise TypeError(
-        "`source` must be raw bytes, a video filepath, or a directory of frames."
+        "source must be raw bytes, a video filepath, or a directory of frames."
     )
 
 
@@ -164,7 +164,7 @@ def base_inference(
     video_source, query, temperature: float = 0.1, model=None, tokenizer=None
 ):
     """
-    `video_source` may be:
+    video_source may be:
         • video bytes
         • path/to/video.mp4
         • path/to/frame_directory/
@@ -204,11 +204,11 @@ def base_inference(
 
 @torch.inference_mode()
 def infer(image_paths=None, artifacts=None, frames_list=None, verbose=False, **kwargs):
-    if "video_source" in kwargs:    
+    if "video_source" in kwargs:
         video_source = kwargs['video_source']
     else:
         video_source = image_paths
-    
+
     model, tokenizer, questions, weight = (
         artifacts["model"],
         artifacts["tokenizer"],
@@ -239,6 +239,51 @@ def infer(image_paths=None, artifacts=None, frames_list=None, verbose=False, **k
     }
 
     return return_dict
+
+
+def infer_batch(
+    image_paths=None, artifacts=None, frames_list=None, verbose=False, **kwargs
+):
+    if "video_sources" in kwargs:
+        video_sources = kwargs["video_sources"]
+    else:
+        video_sources = image_paths
+
+    model, tokenizer, questions, weight = (
+        artifacts["model"],
+        artifacts["tokenizer"],
+        artifacts["questions"],
+        artifacts["weight"],
+    )
+
+    sub_questions = [question for question in questions if "[[prompt]]" not in question]
+    sub_weights = [
+        weight[ques_idx]
+        for ques_idx, (question) in enumerate(questions)
+        if "[[prompt]]" not in question
+    ]
+    assert len(sub_questions) == len(sub_weights)
+    sub_weights = np.array(sub_weights)
+    outputs = []
+
+    for video_source in video_sources:
+        answers = []
+        for query in tqdm(sub_questions, "scoring video"):
+            answer = base_inference(
+                video_source, query, model=model, tokenizer=tokenizer
+            )
+            answers.append(answer)
+            if verbose:
+                print(f"{query} : {answer}")
+        answers = np.array([1 if answer == "yes" else -1 for answer in answers])
+
+        return_dict = {
+            "avg_vision_reward": np.mean(answers * sub_weights).item(),
+            "frame_wise_rewards": answers,
+        }
+        outputs.append(return_dict)
+
+    return outputs
 
 
 if __name__ == "__main__":
@@ -277,7 +322,7 @@ if __name__ == "__main__":
     assert os.path.exists(video1), f"Video {video1} not found"
 
     model_dict = load_artifacts(args)
-    
+
     score_1 = infer(video1, model_dict)
     print(f"Score via video: {score_1}")
 

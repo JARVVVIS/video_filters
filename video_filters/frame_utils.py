@@ -39,7 +39,7 @@ def return_frames(clip_path, desired_fps=None, discard_last=None):
     video = cv2.VideoCapture(clip_path)
     
     if not video.isOpened():
-        print("Error: Could not open video.")
+        print(f"Error: Could not open video at path: {clip_path}")
         return frames_list  # Return empty list instead of None
     
     try:

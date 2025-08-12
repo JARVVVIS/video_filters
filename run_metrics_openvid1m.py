@@ -30,6 +30,9 @@ warnings.filterwarnings("ignore")
 from video_filters.frame_utils import return_frames
 from configs import ROOT_DIR, FILTER_MODULES, get_filter_module
 
+ARTIFACT_LOAD_ERROR = "__ARTIFACT_LOAD_ERROR__"
+
+
 # Simple logging setup
 def setup_logging(output_dir):
     """Setup basic logging to file and console"""
@@ -148,7 +151,11 @@ def gpu_worker(
     try:
         filter_artifacts = filter_module.load_artifacts(args_copy)
     except Exception as e:
-        print(f"Worker {gpu_id}-{worker_id}: Failed to load artifacts: {e}")
+        err = f"Worker {gpu_id}-{worker_id}: Failed to load artifacts: {e}\n{traceback.format_exc()}"
+        try:
+            result_queue.put((ARTIFACT_LOAD_ERROR, None, err))
+        except Exception:
+            pass
         return
 
     batch_size = max(1, getattr(args, "batch_size", 1))
@@ -221,7 +228,8 @@ def gpu_worker(
 def cpu_worker(work_item, filter_name, args):
     """CPU worker for filters that don't require GPU"""
 
-    scene_video_id, video_path, filter_name = work_item
+    video_path, _filter_name = work_item
+    scene_video_id = video_path
 
     # Load filter artifacts
     filter_module = get_filter_module(filter_name)
@@ -344,6 +352,22 @@ def process_filter_with_multiprocessing(
                 try:
                     video_start_time = time.time()
                     scene_video_id, filter_results, error = worker_pool.get_result()
+
+                    ## Skip if artifact load error
+                    if scene_video_id == ARTIFACT_LOAD_ERROR:
+                        logger.error("Artifact load failure reported by a worker:")
+                        logger.error(error if error else "Unknown artifact load error")
+                        worker_pool.shutdown()
+                        if getattr(args, "abort_on_artifact_error", False):
+                            logger.error(
+                                "Exiting entire run due to --abort_on_artifact_error."
+                            )
+                            sys.exit(2)
+                        logger.error(
+                            f"Skipping filter '{filter_name}' due to artifact load error."
+                        )
+                        return pd.DataFrame()
+
                     video_process_time = time.time() - video_start_time
                     processing_times.append(video_process_time)
 
@@ -414,6 +438,25 @@ def process_filter_with_multiprocessing(
 
     else:
         logger.info(f"Using CPU with {args.num_workers} workers")
+
+        ## Precheck filter loading
+        try:
+            fm = get_filter_module(filter_name)
+            args_copy = argparse.Namespace(**vars(args))
+            args_copy.filter_prefix = f"{ROOT_DIR}/video_filters/{filter_name}"
+            # Prefer CPU for preflight so we don't pin GPU mem here
+            args_copy.device = "cpu"
+            _ = fm.load_artifacts(args_copy)
+            del _
+        except Exception as e:
+            logger.error(
+                f"Artifact load failed for filter '{filter_name}' (CPU preflight): {e}"
+            )
+            if getattr(args, "abort_on_artifact_error", False):
+                logger.error("Exiting entire run due to --abort_on_artifact_error.")
+                sys.exit(2)
+            logger.error(f"Skipping filter '{filter_name}' due to artifact load error.")
+            return pd.DataFrame()
 
         # Use ThreadPoolExecutor or ProcessPoolExecutor for CPU processing
         with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
@@ -602,6 +645,11 @@ def main():
         "--speed_run",
         action="store_true",
         help="Exit after the first checkpoint for quick debug/profiling",
+    )
+    parser.add_argument(
+        "--abort_on_artifact_error",
+        action="store_true",
+        help="Exit the entire run if artifact loading fails for any filter",
     )
     args = parser.parse_args()
 

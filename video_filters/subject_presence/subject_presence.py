@@ -2,7 +2,7 @@
 # pip install ultralytics opencv-python pillow torch torchvision segment_anything
 import argparse, os, json, pathlib, time
 from time import perf_counter
-
+import urllib
 from ultralytics import YOLO
 from segment_anything import sam_model_registry, SamPredictor
 from pathlib import Path
@@ -38,6 +38,18 @@ def annotate_and_save(img_bgr, det_out, save_path, max_boxes=100, CLASS_NAMES=No
 def load_artifacts(args):
     # SAM
     ckpt = "video_filters/sam_weights/sam_vit_b_01ec64.pth"
+    if not os.path.exists(ckpt):
+        url = "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
+        print(f"Downloading SAM checkpoint to {ckpt}...")
+        os.makedirs(os.path.dirname(ckpt), exist_ok=True)
+        try:
+            # Download the file
+            urllib.request.urlretrieve(url, ckpt)
+            print(f"Successfully downloaded SAM checkpoint to {ckpt}")
+        except Exception as e:
+            print(f"Error downloading checkpoint: {e}")
+            return False
+
     sam = sam_model_registry["vit_b"](checkpoint=ckpt)
     sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
     predictor = SamPredictor(sam)

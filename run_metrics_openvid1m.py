@@ -184,7 +184,7 @@ def gpu_worker(
                     break
 
             # Prepare inputs for this batch
-            video_paths = [it[0] for it in batch]
+            video_paths = [it for it in batch]
 
             try:
                 # Run batched inference per filter
@@ -287,9 +287,9 @@ def process_filter_with_multiprocessing(
     """Process a filter using multiprocessing"""
     # Filter out already processed videos
     scenes_to_process = [
-        (video_path, filter_name)
+        video_path
         for video_path in video_items_subset
-        if video_path not in processed_video_ids
+        if str(video_path) not in processed_video_ids
     ]
 
     if not scenes_to_process:
@@ -683,6 +683,9 @@ def main():
 
     # Get video paths for the dataset
     video_items = get_openvid_paths(args.dataset)
+    assert isinstance(video_items, list)
+    assert isinstance(video_items[0], Path)
+
     if args.start_idx is None and args.end_idx is None:
         random.shuffle(video_items)
     total_videos = len(video_items)

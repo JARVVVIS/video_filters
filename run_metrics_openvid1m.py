@@ -286,12 +286,13 @@ def process_filter_with_multiprocessing(
 ):
     """Process a filter using multiprocessing"""
     # Filter out already processed videos
+    if isinstance(video_items_subset[0], Path):
+        video_items_subset = list(map(lambda x: str(x), video_items_subset))
     scenes_to_process = [
         (video_path, filter_name)
         for video_path in video_items_subset
         if video_path not in processed_video_ids
     ]
-
     if not scenes_to_process:
         logger.info(f"No new scenes to process for filter {filter_name}")
         return pd.DataFrame()

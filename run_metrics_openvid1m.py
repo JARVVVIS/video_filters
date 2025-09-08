@@ -286,12 +286,14 @@ def process_filter_with_multiprocessing(
 ):
     """Process a filter using multiprocessing"""
     # Filter out already processed videos
+    if isinstance(video_items_subset[0], Path):
+        video_items_subset = list(map(lambda x: str(x), video_items_subset))
     scenes_to_process = [
         video_path
         for video_path in video_items_subset
         if str(video_path) not in processed_video_ids
     ]
-
+    print(f"{len(scenes_to_process)=}, {len(processed_video_ids)=}")
     if not scenes_to_process:
         logger.info(f"No new scenes to process for filter {filter_name}")
         return pd.DataFrame()
@@ -300,6 +302,11 @@ def process_filter_with_multiprocessing(
 
     results_list = []
     errors_list = []
+    # Need to append to the existing checkpoint otherwise the previous checkpoint 
+    # would be overwritten with _JUST_ new entries.
+    if os.path.exists(checkpoint_csv):
+        existing_data = pd.read_csv(checkpoint_csv).to_dict()
+        results_list.append(existing_data)
 
     # Performance tracking
     start_time = time.time()
